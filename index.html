@@ -208,42 +208,61 @@
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--muted);
-      margin-bottom: 10px;
+      margin-bottom: 16px;
+      width: 100%;
+      text-align: center;
     }
 
-    .result-main {
-      font-size: 36px;
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px 8px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 28px;
       font-weight: 800;
       letter-spacing: -1px;
-      line-height: 1.1;
+      line-height: 1;
       background: linear-gradient(135deg, #fff 30%, var(--accent2));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
     }
 
-    .result-sub {
-      font-size: 14px;
+    .stat-unit {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
       color: var(--muted);
-      margin-top: 8px;
+      margin-top: 4px;
     }
 
-    .result-sub span {
-      color: var(--success);
-      font-weight: 600;
+    .stat-total {
+      margin-top: 14px;
+      font-size: 13px;
+      color: var(--muted);
+      width: 100%;
+      text-align: center;
+    }
+
+    .stat-total strong {
+      color: var(--accent2);
     }
 
     .placeholder-text {
       color: var(--muted);
       font-size: 15px;
-    }
-
-    .divider {
-      width: 40px;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: 2px;
-      margin: 12px auto 0;
     }
 
     .rule72 {
@@ -267,7 +286,7 @@
         --muted: #4a7a5a;
         --border: #b2dfdb;
       }
-      .result-main {
+      .stat-value {
         background: linear-gradient(135deg, #0a2e14 30%, var(--accent));
         -webkit-background-clip: text;
         background-clip: text;
@@ -372,11 +391,21 @@
       resultBox.className = 'result has-value';
       resultBox.innerHTML = `
         <div class="result-label">Time to 2×</div>
-        <div class="result-main">${parts.join(' ')}</div>
-        <div class="result-sub">
-          <span>${totalMonths} months</span> and ${remDays} days
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value">${years}</div>
+            <div class="stat-unit">Year${years !== 1 ? 's' : ''}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${months}</div>
+            <div class="stat-unit">Months</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value">${days}</div>
+            <div class="stat-unit">Days</div>
+          </div>
         </div>
-        <div class="divider"></div>
+        <div class="stat-total">Total: <strong>${totalMonths} months</strong> and <strong>${remDays} days</strong></div>
       `;
     }
   </script>
