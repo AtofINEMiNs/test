@@ -111,85 +111,79 @@
       margin-bottom: 10px;
     }
 
-    /* Roller picker */
-    .roller-picker {
+    .input-wrap {
+      position: relative;
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
     }
 
-    .roller-window {
-      position: relative;
-      flex: 1;
-      height: 180px;
-      overflow: hidden;
-      border-radius: 14px;
+    .apr-display {
+      width: 100%;
       background: var(--surface2);
       border: 1.5px solid var(--border);
-      touch-action: none;
-      cursor: grab;
-    }
-
-    .roller-window::before,
-    .roller-window::after {
-      content: '';
-      position: absolute;
-      left: 0; right: 0;
-      height: 66px;
-      z-index: 2;
-      pointer-events: none;
-    }
-
-    .roller-window::before {
-      top: 0;
-      background: linear-gradient(to bottom, var(--surface2) 20%, transparent);
-    }
-
-    .roller-window::after {
-      bottom: 0;
-      background: linear-gradient(to top, var(--surface2) 20%, transparent);
-    }
-
-    .roller-highlight {
-      position: absolute;
-      top: 60px;
-      left: 12px; right: 12px;
-      height: 60px;
-      border-radius: 10px;
-      background: rgba(255,109,0,0.1);
-      border: 1.5px solid var(--accent);
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .roller-drum {
-      position: absolute;
-      width: 100%;
-      will-change: transform;
-    }
-
-    .roller-item {
-      height: 60px;
+      border-radius: 12px;
+      color: var(--text);
+      font-size: 26px;
+      font-weight: 700;
+      padding: 12px 48px 12px 16px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      cursor: default;
+      user-select: none;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 32px;
-      font-weight: 700;
+    }
+
+    .apr-display.placeholder {
       color: var(--muted);
-      transition: font-size 0.15s, color 0.15s;
+      font-weight: 400;
+      font-size: 24px;
     }
 
-    .roller-item.active {
+    .apr-display.active {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
+    }
+
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .numpad-btn {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
       color: var(--text);
-      font-size: 48px;
+      font-size: 18px;
+      font-weight: 600;
+      padding: 10px 0;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.1s, transform 0.1s;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .roller-pct {
-      font-size: 28px;
-      font-weight: 800;
+    .numpad-btn:active {
+      background: var(--accent);
+      color: #fff;
+      transform: scale(0.95);
+    }
+
+    .numpad-btn.del {
       color: var(--accent2);
-      flex-shrink: 0;
+      font-size: 18px;
+    }
+
+    .unit {
+      position: absolute;
+      right: 18px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--accent2);
+      pointer-events: none;
     }
 
     .compounding-row {
@@ -351,12 +345,23 @@
 
     <div class="input-group">
       <label>Annual Percentage Rate</label>
-      <div class="roller-picker">
-        <div class="roller-window" id="rollerAPR">
-          <div class="roller-highlight"></div>
-          <div class="roller-drum" id="drumAPR"></div>
-        </div>
-        <span class="roller-pct">%</span>
+      <div class="input-wrap">
+        <div class="apr-display placeholder" id="aprDisplay">0.00</div>
+        <span class="unit">%</span>
+      </div>
+      <div class="numpad">
+        <button class="numpad-btn" data-k="7">7</button>
+        <button class="numpad-btn" data-k="8">8</button>
+        <button class="numpad-btn" data-k="9">9</button>
+        <button class="numpad-btn" data-k="4">4</button>
+        <button class="numpad-btn" data-k="5">5</button>
+        <button class="numpad-btn" data-k="6">6</button>
+        <button class="numpad-btn" data-k="1">1</button>
+        <button class="numpad-btn" data-k="2">2</button>
+        <button class="numpad-btn" data-k="3">3</button>
+        <button class="numpad-btn" data-k=".">.</button>
+        <button class="numpad-btn" data-k="0">0</button>
+        <button class="numpad-btn del" data-k="del">⌫</button>
       </div>
     </div>
 
@@ -374,119 +379,83 @@
   </div>
 
   <script>
+    const display = document.getElementById('aprDisplay');
     const resultBox = document.getElementById('result');
     const pills = document.querySelectorAll('.pill');
     let n = 12;
+    let raw = ''; // string of digits/dot entered
 
-    const ITEM_H = 60;
-    const PAD = 1;
-    const COUNT = 3000;
-
-    function buildRoller(windowEl, drumEl, count, initial, onChange) {
-      let index = initial;
-      let dragY = null;
-      let dragStartIdx = null;
-      let lastY = null;
-      let lastT = null;
-      let velocity = 0;
-
-      for (let i = 0; i < count + PAD * 2; i++) {
-        const div = document.createElement('div');
-        div.className = 'roller-item';
-        const ri = i - PAD;
-        if (ri >= 0 && ri < count) div.textContent = ri + 1;
-        drumEl.appendChild(div);
+    function updateDisplay() {
+      if (!raw) {
+        display.textContent = '0.00';
+        display.classList.add('placeholder');
+      } else {
+        display.textContent = raw;
+        display.classList.remove('placeholder');
       }
-
-      // Center item[idx] in the middle slot (slot 1 of 3)
-      function offsetFor(idx) { return -idx * ITEM_H; }
-
-      function setOffset(v, animated) {
-        drumEl.style.transition = animated ? 'transform 0.35s cubic-bezier(0.25,0.8,0.25,1)' : 'none';
-        drumEl.style.transform = `translateY(${v}px)`;
-      }
-
-      function markActive(floatIdx) {
-        const rounded = Math.max(0, Math.min(count - 1, Math.round(floatIdx)));
-        drumEl.querySelectorAll('.roller-item').forEach((el, i) => {
-          el.classList.toggle('active', i === rounded + PAD);
-        });
-      }
-
-      function goTo(idx, animated) {
-        index = Math.max(0, Math.min(count - 1, Math.round(idx)));
-        setOffset(offsetFor(index), animated);
-        markActive(index);
-        onChange(index + 1);
-      }
-
-      windowEl.addEventListener('touchstart', e => {
-        dragY = e.touches[0].clientY;
-        dragStartIdx = index;
-        lastY = dragY; lastT = Date.now();
-        velocity = 0;
-        drumEl.style.transition = 'none';
-      }, { passive: true });
-
-      windowEl.addEventListener('touchmove', e => {
-        if (dragY === null) return;
-        const y = e.touches[0].clientY;
-        const now = Date.now();
-        const dt = now - lastT;
-        if (dt > 0) velocity = (y - lastY) / dt;
-        lastY = y; lastT = now;
-        const floatIdx = Math.max(0, Math.min(count - 1, dragStartIdx - (y - dragY) / ITEM_H));
-        setOffset(offsetFor(floatIdx), false);
-        markActive(floatIdx);
-      }, { passive: true });
-
-      windowEl.addEventListener('touchend', e => {
-        if (dragY === null) return;
-        const dy = e.changedTouches[0].clientY - dragY;
-        dragY = null;
-        // Add momentum: flick velocity carries scroll further
-        const momentum = -(velocity * 120) / ITEM_H;
-        goTo(dragStartIdx - dy / ITEM_H + momentum, true);
-      }, { passive: true });
-
-      windowEl.addEventListener('wheel', e => {
-        e.preventDefault();
-        goTo(index + (e.deltaY > 0 ? 1 : -1), true);
-      }, { passive: false });
-
-      goTo(initial, false);
-      return { getIndex: () => index + 1 };
     }
 
-    const aprRoller = buildRoller(
-      document.getElementById('rollerAPR'),
-      document.getElementById('drumAPR'),
-      COUNT, 4,   // index 4 → value 5
-      () => calculate()
-    );
+    document.querySelectorAll('.numpad-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const k = btn.dataset.k;
+        if (k === 'del') {
+          raw = raw.slice(0, -1);
+        } else if (k === '.') {
+          if (!raw.includes('.')) raw += '.';
+        } else {
+          if (raw === '0') raw = k;
+          else if (raw.length < 6) raw += k;
+        }
+        updateDisplay();
+        calculate();
+      });
+    });
 
+    // Set active pill
     function setActivePill(val) {
-      pills.forEach(p => p.classList.toggle('active', Number(p.dataset.n) === val));
+      pills.forEach(p => {
+        p.classList.toggle('active', Number(p.dataset.n) === val);
+      });
       n = val;
       calculate();
     }
 
+    // Init default
     setActivePill(12);
-    pills.forEach(p => p.addEventListener('click', () => setActivePill(Number(p.dataset.n))));
+
+    pills.forEach(p => {
+      p.addEventListener('click', () => setActivePill(Number(p.dataset.n)));
+    });
 
     function calculate() {
-      const apr = aprRoller.getIndex();
+      const apr = parseFloat(raw);
 
-      if (!apr || apr <= 0) return;
+      if (!apr || apr <= 0) {
+        resultBox.className = 'result';
+        resultBox.innerHTML = '<p class="placeholder-text">Enter an APR above ↑</p>';
+        return;
+      }
 
       const r = apr / 100;
+      // t in years: 2 = (1 + r/n)^(n*t)
       const t_years = Math.log(2) / (n * Math.log(1 + r / n));
+
       const totalDays = Math.round(t_years * 365.25);
       const years  = Math.floor(totalDays / 365);
       const months = Math.floor((totalDays % 365) / 30);
       const days   = totalDays % 30;
+
+      // Build readable parts
+      const parts = [];
+      if (years  > 0) parts.push(`${years} yr${years  !== 1 ? 's' : ''}`);
+      if (months > 0) parts.push(`${months} mo`);
+      if (days   > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+
       const totalMonths = Math.floor(t_years * 12);
       const remDays     = Math.round((t_years * 12 - totalMonths) * 30.44);
+
+      // Rule of 72 hint
+      const r72 = (72 / apr).toFixed(1);
 
       resultBox.className = 'result has-value';
       resultBox.innerHTML = `
