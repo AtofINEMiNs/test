@@ -398,17 +398,31 @@
       }
     }
 
+    let idleTimer = null;
+    let stale = false;
+    const IDLE_MS = 10000;
+
+    function resetIdleTimer() {
+      stale = false;
+      clearTimeout(idleTimer);
+      if (raw) idleTimer = setTimeout(() => { stale = true; }, IDLE_MS);
+    }
+
     document.querySelectorAll('.numpad-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const k = btn.dataset.k;
         if (k === 'del') {
           raw = raw.slice(0, -1);
-        } else if (k === '.') {
-          if (!raw.includes('.')) raw += '.';
         } else {
-          if (raw === '0') raw = k;
-          else if (raw.length < 6) raw += k;
+          if (stale) raw = ''; // clear old value on first tap after idle
+          if (k === '.') {
+            if (!raw.includes('.')) raw += '.';
+          } else {
+            if (raw === '0' || raw === '') raw = k;
+            else if (raw.length < 6) raw += k;
+          }
         }
+        resetIdleTimer();
         updateDisplay();
         calculate();
       });
