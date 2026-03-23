@@ -395,12 +395,12 @@
 
     let idleTimer = null;
     let stale = false;
-    const IDLE_MS = 1000;
+    const IDLE_S = 1;
 
     function resetIdleTimer() {
       stale = false;
       clearTimeout(idleTimer);
-      if (raw) idleTimer = setTimeout(() => { stale = true; }, IDLE_MS);
+      if (raw) idleTimer = setTimeout(() => { stale = true; }, IDLE_S * 1000);
     }
 
     document.querySelectorAll('.numpad-btn').forEach(btn => {
