@@ -372,13 +372,11 @@
       <p class="placeholder-text">Enter an APR above ↑</p>
     </div>
 
-    <p class="rule72" id="rule72hint"></p>
   </div>
 
   <script>
     const display = document.getElementById('aprDisplay');
     const resultBox = document.getElementById('result');
-    const rule72hint = document.getElementById('rule72hint');
     const pills = document.querySelectorAll('.pill');
     let n = 12;
     let raw = ''; // string of digits/dot entered
@@ -431,7 +429,6 @@
       if (!apr || apr <= 0) {
         resultBox.className = 'result';
         resultBox.innerHTML = '<p class="placeholder-text">Enter an APR above ↑</p>';
-        rule72hint.textContent = '';
         return;
       }
 
@@ -455,7 +452,6 @@
 
       // Rule of 72 hint
       const r72 = (72 / apr).toFixed(1);
-      rule72hint.innerHTML = `Rule of 72 estimate: <strong>${r72} yrs</strong> &nbsp;·&nbsp; Exact: <strong>${(t_years).toFixed(2)} yrs</strong>`;
 
       resultBox.className = 'result has-value';
       resultBox.innerHTML = `
