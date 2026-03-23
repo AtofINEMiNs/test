@@ -1,0 +1,10 @@
+{
+  "name": "APR Doubling Calculator",
+  "short_name": "2× Calc",
+  "description": "See how long it takes your money to double at a given APR",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f13",
+  "theme_color": "#0f0f13",
+  "orientation": "portrait"
+}
