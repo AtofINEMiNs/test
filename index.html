@@ -111,79 +111,91 @@
       margin-bottom: 10px;
     }
 
-    .input-wrap {
-      position: relative;
+    /* Roller picker */
+    .roller-picker {
       display: flex;
       align-items: center;
-    }
-
-    .apr-display {
-      width: 100%;
-      background: var(--surface2);
-      border: 1.5px solid var(--border);
-      border-radius: 12px;
-      color: var(--text);
-      font-size: 26px;
-      font-weight: 700;
-      padding: 12px 48px 12px 16px;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      cursor: default;
-      user-select: none;
-      display: flex;
-      align-items: center;
-    }
-
-    .apr-display.placeholder {
-      color: var(--muted);
-      font-weight: 400;
-      font-size: 24px;
-    }
-
-    .apr-display.active {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.2);
-    }
-
-    .numpad {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      justify-content: center;
       gap: 6px;
-      margin-top: 8px;
+      margin-bottom: 12px;
     }
 
-    .numpad-btn {
+    .roller-window {
+      position: relative;
+      width: 90px;
+      height: 144px;
+      overflow: hidden;
+      border-radius: 14px;
       background: var(--surface2);
       border: 1.5px solid var(--border);
-      border-radius: 10px;
-      color: var(--text);
-      font-size: 18px;
-      font-weight: 600;
-      padding: 10px 0;
-      text-align: center;
-      cursor: pointer;
-      transition: background 0.1s, transform 0.1s;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      cursor: grab;
     }
 
-    .numpad-btn:active {
-      background: var(--accent);
-      color: #fff;
-      transform: scale(0.95);
-    }
-
-    .numpad-btn.del {
-      color: var(--accent2);
-      font-size: 18px;
-    }
-
-    .unit {
+    .roller-window::before,
+    .roller-window::after {
+      content: '';
       position: absolute;
-      right: 18px;
-      font-size: 20px;
+      left: 0; right: 0;
+      height: 52px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .roller-window::before {
+      top: 0;
+      background: linear-gradient(to bottom, var(--surface2) 20%, transparent);
+    }
+
+    .roller-window::after {
+      bottom: 0;
+      background: linear-gradient(to top, var(--surface2) 20%, transparent);
+    }
+
+    .roller-highlight {
+      position: absolute;
+      top: 48px;
+      left: 8px; right: 8px;
+      height: 48px;
+      border-radius: 8px;
+      background: rgba(255,109,0,0.1);
+      border: 1.5px solid var(--accent);
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .roller-drum {
+      position: absolute;
+      width: 100%;
+      will-change: transform;
+    }
+
+    .roller-item {
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    .roller-item.active {
+      color: var(--text);
+    }
+
+    .roller-sep {
+      font-size: 34px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .roller-pct {
+      font-size: 22px;
       font-weight: 700;
       color: var(--accent2);
-      pointer-events: none;
+      margin-bottom: 4px;
     }
 
     .compounding-row {
@@ -345,23 +357,17 @@
 
     <div class="input-group">
       <label>Annual Percentage Rate</label>
-      <div class="input-wrap">
-        <div class="apr-display placeholder" id="aprDisplay">0.00</div>
-        <span class="unit">%</span>
-      </div>
-      <div class="numpad">
-        <button class="numpad-btn" data-k="7">7</button>
-        <button class="numpad-btn" data-k="8">8</button>
-        <button class="numpad-btn" data-k="9">9</button>
-        <button class="numpad-btn" data-k="4">4</button>
-        <button class="numpad-btn" data-k="5">5</button>
-        <button class="numpad-btn" data-k="6">6</button>
-        <button class="numpad-btn" data-k="1">1</button>
-        <button class="numpad-btn" data-k="2">2</button>
-        <button class="numpad-btn" data-k="3">3</button>
-        <button class="numpad-btn" data-k=".">.</button>
-        <button class="numpad-btn" data-k="0">0</button>
-        <button class="numpad-btn del" data-k="del">⌫</button>
+      <div class="roller-picker">
+        <div class="roller-window" id="rollerWhole">
+          <div class="roller-highlight"></div>
+          <div class="roller-drum" id="drumWhole"></div>
+        </div>
+        <span class="roller-sep">.</span>
+        <div class="roller-window" id="rollerDec">
+          <div class="roller-highlight"></div>
+          <div class="roller-drum" id="drumDec"></div>
+        </div>
+        <span class="roller-pct">%</span>
       </div>
     </div>
 
@@ -379,83 +385,118 @@
   </div>
 
   <script>
-    const display = document.getElementById('aprDisplay');
     const resultBox = document.getElementById('result');
     const pills = document.querySelectorAll('.pill');
     let n = 12;
-    let raw = ''; // string of digits/dot entered
 
-    function updateDisplay() {
-      if (!raw) {
-        display.textContent = '0.00';
-        display.classList.add('placeholder');
-      } else {
-        display.textContent = raw;
-        display.classList.remove('placeholder');
+    const ITEM_H = 48;
+    const PAD = 1;
+
+    function buildRoller(windowEl, drumEl, count, initial, fmt, onChange) {
+      let index = initial;
+      let dragY = null;
+      let dragStartIdx = null;
+
+      for (let i = 0; i < count + PAD * 2; i++) {
+        const div = document.createElement('div');
+        div.className = 'roller-item';
+        const ri = i - PAD;
+        if (ri >= 0 && ri < count) div.textContent = fmt(ri);
+        drumEl.appendChild(div);
       }
+
+      function offsetFor(idx) { return (PAD - idx) * ITEM_H; }
+
+      function setOffset(offset, animated) {
+        drumEl.style.transition = animated ? 'transform 0.3s cubic-bezier(0.25,0.8,0.25,1)' : 'none';
+        drumEl.style.transform = `translateY(${offset}px)`;
+      }
+
+      function markActive(idx) {
+        drumEl.querySelectorAll('.roller-item').forEach((el, i) => {
+          el.classList.toggle('active', i === idx + PAD);
+        });
+      }
+
+      function goTo(idx, animated) {
+        index = Math.max(0, Math.min(count - 1, idx));
+        setOffset(offsetFor(index), animated);
+        markActive(index);
+        onChange(index);
+      }
+
+      windowEl.addEventListener('touchstart', e => {
+        dragY = e.touches[0].clientY;
+        dragStartIdx = index;
+        drumEl.style.transition = 'none';
+      }, { passive: true });
+
+      windowEl.addEventListener('touchmove', e => {
+        if (dragY === null) return;
+        const dy = e.touches[0].clientY - dragY;
+        const floatIdx = Math.max(0, Math.min(count - 1, dragStartIdx - dy / ITEM_H));
+        setOffset(offsetFor(floatIdx), false);
+        markActive(Math.round(floatIdx));
+      }, { passive: true });
+
+      windowEl.addEventListener('touchend', e => {
+        if (dragY === null) return;
+        const dy = e.changedTouches[0].clientY - dragY;
+        dragY = null;
+        goTo(Math.round(dragStartIdx - dy / ITEM_H), true);
+      }, { passive: true });
+
+      windowEl.addEventListener('wheel', e => {
+        e.preventDefault();
+        goTo(index + (e.deltaY > 0 ? 1 : -1), true);
+      }, { passive: false });
+
+      goTo(index, false);
+      return { getIndex: () => index };
     }
 
-    document.querySelectorAll('.numpad-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const k = btn.dataset.k;
-        if (k === 'del') {
-          raw = raw.slice(0, -1);
-        } else if (k === '.') {
-          if (!raw.includes('.')) raw += '.';
-        } else {
-          if (raw === '0') raw = k;
-          else if (raw.length < 6) raw += k;
-        }
-        updateDisplay();
-        calculate();
-      });
-    });
+    const wholeRoller = buildRoller(
+      document.getElementById('rollerWhole'),
+      document.getElementById('drumWhole'),
+      100, 5,
+      i => String(i),
+      () => calculate()
+    );
 
-    // Set active pill
+    const decRoller = buildRoller(
+      document.getElementById('rollerDec'),
+      document.getElementById('drumDec'),
+      10, 0,
+      i => String(i),
+      () => calculate()
+    );
+
     function setActivePill(val) {
-      pills.forEach(p => {
-        p.classList.toggle('active', Number(p.dataset.n) === val);
-      });
+      pills.forEach(p => p.classList.toggle('active', Number(p.dataset.n) === val));
       n = val;
       calculate();
     }
 
-    // Init default
     setActivePill(12);
-
-    pills.forEach(p => {
-      p.addEventListener('click', () => setActivePill(Number(p.dataset.n)));
-    });
+    pills.forEach(p => p.addEventListener('click', () => setActivePill(Number(p.dataset.n))));
 
     function calculate() {
-      const apr = parseFloat(raw);
+      const apr = wholeRoller.getIndex() + decRoller.getIndex() / 10;
 
-      if (!apr || apr <= 0) {
+      if (apr <= 0) {
         resultBox.className = 'result';
-        resultBox.innerHTML = '<p class="placeholder-text">Enter an APR above ↑</p>';
+        resultBox.innerHTML = '<p class="placeholder-text">Set APR above to 0.1% or higher</p>';
         return;
       }
 
       const r = apr / 100;
-      // t in years: 2 = (1 + r/n)^(n*t)
       const t_years = Math.log(2) / (n * Math.log(1 + r / n));
-
       const totalDays = Math.round(t_years * 365.25);
       const years  = Math.floor(totalDays / 365);
       const months = Math.floor((totalDays % 365) / 30);
       const days   = totalDays % 30;
-
-      // Build readable parts
-      const parts = [];
-      if (years  > 0) parts.push(`${years} yr${years  !== 1 ? 's' : ''}`);
-      if (months > 0) parts.push(`${months} mo`);
-      if (days   > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
-
       const totalMonths = Math.floor(t_years * 12);
       const remDays     = Math.round((t_years * 12 - totalMonths) * 30.44);
-
-      // Rule of 72 hint
-      const r72 = (72 / apr).toFixed(1);
 
       resultBox.className = 'result has-value';
       resultBox.innerHTML = `
