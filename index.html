@@ -186,37 +186,6 @@
       pointer-events: none;
     }
 
-    .compounding-row {
-      display: flex;
-      gap: 6px;
-      margin-bottom: 12px;
-    }
-
-    .pill {
-      flex: 1;
-      padding: 7px 4px;
-      border-radius: 8px;
-      border: 1.5px solid var(--border);
-      background: var(--surface2);
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-      text-align: center;
-      cursor: pointer;
-      transition: all 0.15s;
-      letter-spacing: 0.3px;
-    }
-
-    .pill.active {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }
-
-    .pill:hover:not(.active) {
-      border-color: var(--accent2);
-      color: var(--text);
-    }
 
     /* Result */
     .result {
@@ -365,13 +334,6 @@
       </div>
     </div>
 
-    <label style="margin-bottom:6px">Compounding</label>
-    <div class="compounding-row">
-      <div class="pill" data-n="1">Annual</div>
-      <div class="pill" data-n="12" id="defaultPill">Monthly</div>
-      <div class="pill" data-n="365">Daily</div>
-    </div>
-
     <div class="result" id="result">
       <p class="placeholder-text">Enter an APR above ↑</p>
     </div>
@@ -381,8 +343,6 @@
   <script>
     const display = document.getElementById('aprDisplay');
     const resultBox = document.getElementById('result');
-    const pills = document.querySelectorAll('.pill');
-    let n = 12;
     let raw = ''; // string of digits/dot entered
 
     function updateDisplay() {
@@ -411,22 +371,6 @@
       });
     });
 
-    // Set active pill
-    function setActivePill(val) {
-      pills.forEach(p => {
-        p.classList.toggle('active', Number(p.dataset.n) === val);
-      });
-      n = val;
-      calculate();
-    }
-
-    // Init default
-    setActivePill(12);
-
-    pills.forEach(p => {
-      p.addEventListener('click', () => setActivePill(Number(p.dataset.n)));
-    });
-
     function calculate() {
       const apr = parseFloat(raw);
 
@@ -437,8 +381,8 @@
       }
 
       const r = apr / 100;
-      // t in years: 2 = (1 + r/n)^(n*t)
-      const t_years = Math.log(2) / (n * Math.log(1 + r / n));
+      // Simple interest (no compounding): 1 + r*t = 2  →  t = 1/r
+      const t_years = 1 / r;
 
       const totalDays = Math.round(t_years * 365.25);
       const years  = Math.floor(totalDays / 365);
