@@ -38,6 +38,9 @@
 
     html, body {
       overscroll-behavior: none;
+      overflow: hidden;
+      touch-action: none;
+      height: 100%;
     }
 
     body {
@@ -159,6 +162,7 @@
       transition: background 0.1s, transform 0.1s;
       user-select: none;
       -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
 
     .numpad-btn:active {
@@ -199,6 +203,7 @@
       cursor: pointer;
       transition: border-color 0.15s, background 0.15s, color 0.15s;
       letter-spacing: 0.3px;
+      touch-action: manipulation;
     }
 
     .pill.active {
@@ -362,7 +367,25 @@
     </div>
 
     <div class="result" id="result">
-      <p class="placeholder-text">Enter an APR above ↑</p>
+      <p class="placeholder-text" id="resultPlaceholder">Enter an APR above ↑</p>
+      <div id="resultContent" style="display:none; width:100%;">
+        <div class="result-label">Time to 2×</div>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" id="statYears">0</div>
+            <div class="stat-unit" id="statYearsUnit">Years</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="statMonths">0</div>
+            <div class="stat-unit">Months</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="statDays">0</div>
+            <div class="stat-unit">Days</div>
+          </div>
+        </div>
+        <div class="stat-total" id="statTotal"></div>
+      </div>
     </div>
 
   </div>
@@ -403,32 +426,53 @@
       if (raw) idleTimer = setTimeout(() => { stale = true; }, IDLE_S * 1000);
     }
 
-    document.querySelectorAll('.numpad-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const k = btn.dataset.k;
-        if (k === 'del') {
-          raw = raw.slice(0, -1);
+    // Prevent viewport shifting on touch devices
+    document.querySelector('.numpad').addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+
+    function handleKey(k) {
+      if (k === 'del') {
+        raw = raw.slice(0, -1);
+      } else {
+        if (stale) raw = ''; // clear old value on first tap after idle
+        if (k === '.') {
+          if (!raw.includes('.')) raw += '.';
         } else {
-          if (stale) raw = ''; // clear old value on first tap after idle
-          if (k === '.') {
-            if (!raw.includes('.')) raw += '.';
-          } else {
-            if (raw === '0' || raw === '') raw = k;
-            else if (raw.length < 6) raw += k;
-          }
+          if (raw === '0' || raw === '') raw = k;
+          else if (raw.length < 6) raw += k;
         }
-        resetIdleTimer();
-        updateDisplay();
-        calculate();
+      }
+      resetIdleTimer();
+      updateDisplay();
+      calculate();
+      window.scrollTo(0, 0);
+    }
+
+    document.querySelectorAll('.numpad-btn').forEach(btn => {
+      // Use touchend with preventDefault on touchstart to avoid viewport scroll
+      btn.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
+      btn.addEventListener('touchend', e => {
+        e.preventDefault();
+        handleKey(btn.dataset.k);
       });
+      // Keep click for non-touch (desktop) usage
+      btn.addEventListener('click', () => handleKey(btn.dataset.k));
     });
+
+    const resultPlaceholder = document.getElementById('resultPlaceholder');
+    const resultContent = document.getElementById('resultContent');
+    const statYears = document.getElementById('statYears');
+    const statYearsUnit = document.getElementById('statYearsUnit');
+    const statMonths = document.getElementById('statMonths');
+    const statDays = document.getElementById('statDays');
+    const statTotal = document.getElementById('statTotal');
 
     function calculate() {
       const apr = parseFloat(raw);
 
       if (!apr || apr <= 0) {
         resultBox.className = 'result';
-        resultBox.innerHTML = '<p class="placeholder-text">Enter an APR above ↑</p>';
+        resultPlaceholder.style.display = '';
+        resultContent.style.display = 'none';
         return;
       }
 
@@ -442,37 +486,18 @@
       const months = Math.floor((totalDays % 365) / 30);
       const days   = totalDays % 30;
 
-      // Build readable parts
-      const parts = [];
-      if (years  > 0) parts.push(`${years} yr${years  !== 1 ? 's' : ''}`);
-      if (months > 0) parts.push(`${months} mo`);
-      if (days   > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+      const totalMonthsVal = Math.floor(t_years * 12);
+      const remDays     = Math.round((t_years * 12 - totalMonthsVal) * 30.44);
 
-      const totalMonths = Math.floor(t_years * 12);
-      const remDays     = Math.round((t_years * 12 - totalMonths) * 30.44);
-
-      // Rule of 72 hint
-      const r72 = (72 / apr).toFixed(1);
+      statYears.textContent = years;
+      statYearsUnit.textContent = 'Year' + (years !== 1 ? 's' : '');
+      statMonths.textContent = months;
+      statDays.textContent = days;
+      statTotal.innerHTML = `Total: <strong>${totalMonthsVal} months</strong> and <strong>${remDays} days</strong>`;
 
       resultBox.className = 'result has-value';
-      resultBox.innerHTML = `
-        <div class="result-label">Time to 2×</div>
-        <div class="stat-grid">
-          <div class="stat">
-            <div class="stat-value">${years}</div>
-            <div class="stat-unit">Year${years !== 1 ? 's' : ''}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-value">${months}</div>
-            <div class="stat-unit">Months</div>
-          </div>
-          <div class="stat">
-            <div class="stat-value">${days}</div>
-            <div class="stat-unit">Days</div>
-          </div>
-        </div>
-        <div class="stat-total">Total: <strong>${totalMonths} months</strong> and <strong>${remDays} days</strong></div>
-      `;
+      resultPlaceholder.style.display = 'none';
+      resultContent.style.display = '';
     }
   </script>
 </body>
