@@ -367,7 +367,25 @@
     </div>
 
     <div class="result" id="result">
-      <p class="placeholder-text">Enter an APR above ↑</p>
+      <p class="placeholder-text" id="resultPlaceholder">Enter an APR above ↑</p>
+      <div id="resultContent" style="display:none; width:100%;">
+        <div class="result-label">Time to 2×</div>
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-value" id="statYears">0</div>
+            <div class="stat-unit" id="statYearsUnit">Years</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="statMonths">0</div>
+            <div class="stat-unit">Months</div>
+          </div>
+          <div class="stat">
+            <div class="stat-value" id="statDays">0</div>
+            <div class="stat-unit">Days</div>
+          </div>
+        </div>
+        <div class="stat-total" id="statTotal"></div>
+      </div>
     </div>
 
   </div>
@@ -426,6 +444,7 @@
       resetIdleTimer();
       updateDisplay();
       calculate();
+      window.scrollTo(0, 0);
     }
 
     document.querySelectorAll('.numpad-btn').forEach(btn => {
@@ -439,12 +458,21 @@
       btn.addEventListener('click', () => handleKey(btn.dataset.k));
     });
 
+    const resultPlaceholder = document.getElementById('resultPlaceholder');
+    const resultContent = document.getElementById('resultContent');
+    const statYears = document.getElementById('statYears');
+    const statYearsUnit = document.getElementById('statYearsUnit');
+    const statMonths = document.getElementById('statMonths');
+    const statDays = document.getElementById('statDays');
+    const statTotal = document.getElementById('statTotal');
+
     function calculate() {
       const apr = parseFloat(raw);
 
       if (!apr || apr <= 0) {
         resultBox.className = 'result';
-        resultBox.innerHTML = '<p class="placeholder-text">Enter an APR above ↑</p>';
+        resultPlaceholder.style.display = '';
+        resultContent.style.display = 'none';
         return;
       }
 
@@ -458,37 +486,18 @@
       const months = Math.floor((totalDays % 365) / 30);
       const days   = totalDays % 30;
 
-      // Build readable parts
-      const parts = [];
-      if (years  > 0) parts.push(`${years} yr${years  !== 1 ? 's' : ''}`);
-      if (months > 0) parts.push(`${months} mo`);
-      if (days   > 0) parts.push(`${days} day${days !== 1 ? 's' : ''}`);
+      const totalMonthsVal = Math.floor(t_years * 12);
+      const remDays     = Math.round((t_years * 12 - totalMonthsVal) * 30.44);
 
-      const totalMonths = Math.floor(t_years * 12);
-      const remDays     = Math.round((t_years * 12 - totalMonths) * 30.44);
-
-      // Rule of 72 hint
-      const r72 = (72 / apr).toFixed(1);
+      statYears.textContent = years;
+      statYearsUnit.textContent = 'Year' + (years !== 1 ? 's' : '');
+      statMonths.textContent = months;
+      statDays.textContent = days;
+      statTotal.innerHTML = `Total: <strong>${totalMonthsVal} months</strong> and <strong>${remDays} days</strong>`;
 
       resultBox.className = 'result has-value';
-      resultBox.innerHTML = `
-        <div class="result-label">Time to 2×</div>
-        <div class="stat-grid">
-          <div class="stat">
-            <div class="stat-value">${years}</div>
-            <div class="stat-unit">Year${years !== 1 ? 's' : ''}</div>
-          </div>
-          <div class="stat">
-            <div class="stat-value">${months}</div>
-            <div class="stat-unit">Months</div>
-          </div>
-          <div class="stat">
-            <div class="stat-value">${days}</div>
-            <div class="stat-unit">Days</div>
-          </div>
-        </div>
-        <div class="stat-total">Total: <strong>${totalMonths} months</strong> and <strong>${remDays} days</strong></div>
-      `;
+      resultPlaceholder.style.display = 'none';
+      resultContent.style.display = '';
     }
   </script>
 </body>
